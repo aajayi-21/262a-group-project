@@ -1,0 +1,11 @@
+# Python environment and caches
+.venv/
+__pycache__/
+*.pyc
+# LP files written by cfl_model.py on every solve (regenerated, can be large)
+instances/
+# Gurobi license: personal, never commit
+gurobi.lic
+# OS / editor
+.DS_Store
+.ipynb_checkpoints/

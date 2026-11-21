@@ -45,12 +45,41 @@ def build_cfl(inst, relax=False, strong=False):
         + sum(inst['c'][i, j] * M.x[i, j] for i in M.I for j in M.J))
     M.demand = pyo.Constraint(M.J, rule=lambda M, j: sum(M.x[i, j] for i in M.I) == inst['d'][j])
     M.capacity = pyo.Constraint(M.I, rule=lambda M, i: sum(M.x[i, j] for j in M.J) <= inst['q'][i] * M.y[i])
-    if strong:   # (CFL+), Part 1(b): an open site ships at most d_j to customer j
-        M.vub = pyo.Constraint(M.I, M.J,
+    if strong:
+        M.strong = pyo.Constraint(M.I, M.J,
                                rule=lambda M, i, j: M.x[i, j] <= inst['d'][j] * M.y[i])
-    # TODO (Part 1(a)): a second function for the formulation of your extension track
     if relax:
         M.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT)   # LP duals, read after solving
+    return M
+
+
+def build_cfl_c(inst, relax=False, strong=False):
+    """Track C (modular capacity): each site opens at most one module,
+    small (f[i], q[i]) or large (f2[i], q2[i]).  relax=True gives the LP
+    relaxation.  strong=True adds x_ij <= d_j (y_is + y_il) for all i, j."""
+    M = pyo.ConcreteModel()
+    M.I = pyo.Set(initialize=inst['I'])
+    M.J = pyo.Set(initialize=inst['J'])
+    M.K = pyo.Set(initialize=['s', 'l'])                     # module sizes
+    f = {(i, 's'): inst['f'][i] for i in inst['I']} | {(i, 'l'): inst['f2'][i] for i in inst['I']}
+    q = {(i, 's'): inst['q'][i] for i in inst['I']} | {(i, 'l'): inst['q2'][i] for i in inst['I']}
+    M.y = pyo.Var(M.I, M.K, bounds=(0, 1), within=pyo.Reals if relax else pyo.Binary)
+    M.x = pyo.Var(M.I, M.J, within=pyo.NonNegativeReals)
+    M.obj = pyo.Objective(
+        expr=sum(f[i, k] * M.y[i, k] for i in M.I for k in M.K)
+        + sum(inst['c'][i, j] * M.x[i, j] for i in M.I for j in M.J))
+    # sum_i x_ij = d_j
+    M.demand = pyo.Constraint(M.J, rule=lambda M, j: sum(M.x[i, j] for i in M.I) == inst['d'][j])
+    # sum_j x_ij <= q_is y_is + q_il y_il
+    M.capacity = pyo.Constraint(M.I, rule=lambda M, i:
+                                sum(M.x[i, j] for j in M.J) <= sum(q[i, k] * M.y[i, k] for k in M.K))
+    # y_is + y_il <= 1
+    M.one_module = pyo.Constraint(M.I, rule=lambda M, i: sum(M.y[i, k] for k in M.K) <= 1)
+    if strong:   # an open site (either module) ships at most d_j to customer j
+        M.strong = pyo.Constraint(M.I, M.J, rule=lambda M, i, j:
+                               M.x[i, j] <= inst['d'][j] * sum(M.y[i, k] for k in M.K))
+    if relax:
+        M.dual = pyo.Suffix(direction=pyo.Suffix.IMPORT)
     return M
 
 

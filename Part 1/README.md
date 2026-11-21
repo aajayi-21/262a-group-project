@@ -1,13 +1,14 @@
-# Part 1 — Modeling: base CFL and Track C extension
+# Part 1 — Modeling: CFL, CFL+, Track C and Track C+
 
 Team 4: seeds 401, 402, 403; capacity ratios 2, 4, 8; family S (20 sites, 80 customers).
 
 | File | Contents |
 |---|---|
 | `cfl_data.py` | instance generator (course starter, unchanged) |
-| `cfl_model.py` | `build_cfl(inst)` builds (CFL); `build_cfl_c(inst)` builds the Track C extension |
-| `part1.py` | solves the LP relaxation and the IP of (CFL) and Track C on the 9 family S instances |
-| `results/part1.csv` | output of `part1.py` |
+| `cfl_model.py` | `build_cfl(inst)` builds (CFL); `build_cfl_c(inst)` builds the Track C extension; `strong=True` gives the "+" version of either |
+| `part1.py` | solves the LP relaxation and the IP of all four formulations on the 9 family S instances |
+| `results/part1_cfl.csv` | (CFL) and (CFL+) |
+| `results/part1_trackc.csv` | Track C and Track C+ |
 
 ## Track C: modular capacity
 
@@ -23,34 +24,46 @@ s.t. sum_i x_ij = d_j                         for j in J
 ```
 
 In `cfl_model.py`, `y[i, 's']` and `y[i, 'l']` are the module variables and
-`M.one_module` is the at-most-one-module constraint. Both builders also accept
-`strong=True`, which adds `M.strong`: x_ij <= d_j y_i (CFL+) or
-x_ij <= d_j (y_is + y_il) (Track C). `part1.py` does not use it.
+`M.one_module` is the at-most-one-module constraint.
 
-## Results (`results/part1.csv`)
+## The "+" formulations
 
-Columns: `z_lp`, `z_ip` (LP and IP values), `gap_pct` = 100 (z_ip − z_lp) / z_ip,
-`frac_y` (fractional y in the LP solution), `open` (sites open in the IP),
-`large` (sites with the large module), `nodes`, `time_s`.
+`strong=True` adds `M.strong`, one row per site and customer:
 
-Averages over the three seeds:
+- CFL+: x_ij <= d_j y_i
+- Track C+: x_ij <= d_j (y_is + y_il)
 
-| Ratio | CFL gap | Track C gap | Track C IP vs CFL | Large modules |
+Each is valid for the integer program (an open site never ships a customer more
+than its demand), so the IP value is unchanged, but it cuts off fractional LP
+points where y is set to (flow / capacity). It adds |I| x |J| = 1,600 rows on family S.
+
+## Results
+
+Columns in both files: `z_lp`, `z_ip` (LP and IP values),
+`gap_pct` = 100 (z_ip − z_lp) / z_ip, `frac_y` (fractional y in the LP solution),
+`open` (sites open in the IP), `large` (sites with the large module, always 0 for CFL),
+`nodes` (branch-and-bound nodes), `time_s` (IP solve time).
+
+Average gap over the three seeds:
+
+| Ratio | CFL | CFL+ | Track C | Track C+ |
 |---|---|---|---|---|
-| 2 | 3.1% | 8.8% | about 11% cheaper | 4 per instance |
-| 4 | 9.4% | 21.4% | 0–3% cheaper | 0–2 |
-| 8 | 24.3% | 34.3% | equal | 0 |
+| 2 | 3.1% | 1.6% | 8.8% | 1.7% |
+| 4 | 9.4% | 0.7% | 21.4% | 1.6% |
+| 8 | 24.3% | 0.4% | 34.3% | 0.7% |
 
-- Track C's IP value is never above CFL's, since it can open everything CFL can.
-- Large modules pay off when capacity is tight (ratio 2); with loose capacity (ratio 8) the optimum uses only small modules.
-- Track C's LP relaxation is weaker than CFL's: per unit of capacity the large module costs 0.8 times the small one, so the LP opens fractions of large modules. Its gaps are wider and branch and bound needs more nodes.
+- Each "+" formulation has the same IP value as its base formulation, and a higher LP bound.
+- The weak gap grows with the capacity ratio, because the capacity row lets the LP set y_i = flow / q_i and pay only that fraction of the fixed cost. The "+" rows tie y to d_j instead of q_i, so their gap stays small.
+- Track C's IP value is never above CFL's. Large modules pay off when capacity is tight (4 per instance at ratio 2); at ratio 8 the optimum uses only small modules.
+- Track C's base LP is weaker than CFL's: per unit of capacity the large module costs 0.8 times the small one, so the LP opens fractions of large modules. Track C+ closes most of that gap, and branch and bound needs far fewer nodes (for example 929 → 95, 839 → 67).
+- The "+" formulations take about 2–3× longer per IP solve because of the extra rows; all runs are under 0.25 s.
 
 ## Reproduce
 
 ```
 python -m pip install pyomo gurobipy
 cd "Part 1"
-python part1.py        # prints the table and writes results/part1.csv
+python part1.py        # prints both tables and writes results/part1_cfl.csv, results/part1_trackc.csv
 ```
 
 All Gurobi runs use Presolve=0, Cuts=0, Heuristics=0 (`GUROBI_SETTINGS` in `cfl_model.py`).

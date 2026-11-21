@@ -1,4 +1,4 @@
-"""Part 1: LP and IP values of (CFL), (CFL+), Track C and Track C+ on team 4's
+"""Part 1: LP and IP values of (CFL), (CFL+), CFL-C and CFL-C+ on team 4's
 family S instances.
 
     python part1.py
@@ -7,7 +7,7 @@ Team 4 uses seeds 401, 402, 403 with capacity ratio 2, 4, 8.  For each instance
 and formulation, the script solves the LP relaxation and the integer program
 under GUROBI_SETTINGS and prints a table.  It writes two files:
     results/part1_cfl.csv      (CFL) and (CFL+)
-    results/part1_trackc.csv   Track C and Track C+
+    results/part1_cfl_c.csv    CFL-C and CFL-C+
 The "+" formulations add x_ij <= d_j * (open indicator of site i) (strong=True).
 Columns: open = sites with a module open, large = sites with the large module
 (always 0 for CFL), frac_y = fractional y variables in the LP solution.
@@ -24,8 +24,8 @@ TOL = 1e-6
 # (name, builder, strong, output file)
 FORMS = (('CFL', build_cfl, False, 'part1_cfl.csv'),
          ('CFL+', build_cfl, True, 'part1_cfl.csv'),
-         ('TrackC', build_cfl_c, False, 'part1_trackc.csv'),
-         ('TrackC+', build_cfl_c, True, 'part1_trackc.csv'))
+         ('CFL-C', build_cfl_c, False, 'part1_cfl_c.csv'),
+         ('CFL-C+', build_cfl_c, True, 'part1_cfl_c.csv'))
 
 
 def run(fam='S'):

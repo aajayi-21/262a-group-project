@@ -2,12 +2,12 @@
 
     python part1_cutoff.py
 
-For each comparison, (CFL) vs (CFL+) and Track C vs Track C+, on one instance
+For each comparison, (CFL) vs (CFL+) and CFL-C vs CFL-C+, on one instance
 (seed 401, ratio 4), the script solves the weak LP relaxation and takes its
 optimum (x*, y*).  That point is feasible for the weak LP; the script finds
 the strong row it violates most,
     CFL+:      x_ij <= d_j y_i
-    Track C+:  x_ij <= d_j (y_is + y_il),
+    CFL-C+:    x_ij <= d_j (y_is + y_il),
 which shows the strong formulation cuts the point off.  It also solves the
 strong LP relaxation, for its value.
 
@@ -20,7 +20,7 @@ from cfl_data import family
 from cfl_model import build_cfl, build_cfl_c, solve
 
 SEED, RATIO = 401, 4
-COMPARISONS = (('CFL vs CFL+', build_cfl), ('TrackC vs TrackC+', build_cfl_c))
+COMPARISONS = (('CFL vs CFL+', build_cfl), ('CFL-C vs CFL-C+', build_cfl_c))
 
 
 def run():
@@ -32,7 +32,7 @@ def run():
         z_weak = solve(weak)[0]
         z_strong = solve(build(inst, relax=True, strong=True))[0]
 
-        def open_level(i):       # y_i, or y_is + y_il for Track C
+        def open_level(i):       # y_i, or y_is + y_il for CFL-C
             return pyo.value(weak.y[i, 's'] + weak.y[i, 'l']) if track_c else pyo.value(weak.y[i])
 
         # the strong row the weak optimum violates most

@@ -9,6 +9,8 @@ Team 4: seeds 401, 402, 403; capacity ratios 2, 4, 8; family S (20 sites, 80 cus
 | `part1.py` | solves the LP relaxation and the IP of all four formulations on the 9 family S instances |
 | `results/part1_cfl.csv` | (CFL) and (CFL+) |
 | `results/part1_trackc.csv` | Track C and Track C+ |
+| `part1_cutoff.py` | shows each strong formulation cuts off the optimum of the weak LP relaxation |
+| `results/part1_cutoff.csv` | output of `part1_cutoff.py`: one point per comparison |
 
 ## Track C: modular capacity
 
@@ -37,6 +39,19 @@ Each is valid for the integer program (an open site never ships a customer more
 than its demand), so the IP value is unchanged, but it cuts off fractional LP
 points where y is set to (flow / capacity). It adds |I| x |J| = 1,600 rows on family S.
 
+`part1_cutoff.py` exhibits one such point per comparison (seed 401, ratio 4).
+In both weak LP optima, site 6 ships 71 units, all 35 units of customer 68's
+demand among them, while the LP opens it only as far as capacity requires:
+
+| Comparison | Weak LP optimum at site 6 | Strong row (6, 68) | LP value, weak → strong |
+|---|---|---|---|
+| CFL vs CFL+ | y_6 = 71/449 = 0.1581 | 35 ≤ 35 × 0.1581 = 5.53, violated | 47,398.67 → 51,981.17 |
+| Track C vs Track C+ | y_6s = 0, y_6l = 71/898 = 0.0791 | 35 ≤ 35 × 0.0791 = 2.77, violated | 40,744.82 → 51,830.45 |
+
+Each point is feasible for the weak LP relaxation but not for the strong one.
+In `results/part1_cutoff.csv`, `strong_rhs` is d_j times the open level of site i
+at that point, and `weak_optimum_y` lists every nonzero y of the point.
+
 ## Results
 
 Columns in both files: `z_lp`, `z_ip` (LP and IP values),
@@ -64,6 +79,7 @@ Average gap over the three seeds:
 python -m pip install pyomo gurobipy
 cd "Part 1"
 python part1.py        # prints both tables and writes results/part1_cfl.csv, results/part1_trackc.csv
+python part1_cutoff.py # writes results/part1_cutoff.csv
 ```
 
 All Gurobi runs use Presolve=0, Cuts=0, Heuristics=0 (`GUROBI_SETTINGS` in `cfl_model.py`).
